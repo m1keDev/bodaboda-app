@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BodaConnect</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f8f7f4;
+      --bg2: #f0ede8;
+      --surface: #ffffff;
+      --border: #e4e0d8;
+      --border2: #d4cfc5;
+      --ink: #1a1916;
+      --ink2: #4a4740;
+      --ink3: #8a8580;
+      --accent: #1a1916;
+      --accent-fg: #f8f7f4;
+      --green: #1a6645;
+      --green-bg: #edf5f0;
+      --red: #b83232;
+      --red-bg: #fdf0f0;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --t: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="dark"] {
+      --bg: #111110;
+      --bg2: #1a1918;
+      --surface: #1f1e1c;
+      --border: #2e2c29;
+      --border2: #3d3b37;
+      --ink: #f0ede8;
+      --ink2: #b8b4ad;
+      --ink3: #6a6660;
+      --accent: #f0ede8;
+      --accent-fg: #111110;
+      --green: #3db87a;
+      --green-bg: #0d2418;
+      --red: #e05555;
+      --red-bg: #250f0f;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Geist', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      transition: background var(--t), color var(--t);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 3px;
+    }
+
+    /* NAV */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      height: 56px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      transition: background var(--t), border-color var(--t);
+    }
+
+    .logo {
+      font-family: 'Instrument Serif', serif;
+      font-size: 1.2rem;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+
+    .nav-center {
+      display: flex;
+      gap: 2px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      padding: 0.32rem 0.95rem;
+      border-radius: 999px;
+      font-family: 'Geist', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--ink3);
+      cursor: pointer;
+      transition: all var(--t);
+    }
+
+    .tab-btn:hover {
+      color: var(--ink);
+    }
+
+    .tab-btn.active {
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .theme-toggle {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      transition: all var(--t);
+    }
+
+    .theme-toggle:hover {
+      background: var(--bg2);
+      border-color: var(--border2);
+    }
+
+    /* PANELS */
+    .panel {
+      display: none;
+      animation: fadeUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* HOME */
+    .home-wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 2rem 5rem;
+    }
+
+    .hero {
+      padding: 5rem 0 4rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 3.5rem;
+    }
+
+    .eyebrow {
+      font-size: 0.73rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink3);
+      margin-bottom: 1.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .eyebrow::before {
+      content: '';
+      width: 18px;
+      height: 1px;
+      background: var(--ink3);
+    }
+
+    h1 {
+      font-family: 'Instrument Serif', serif;
+      font-size: clamp(3rem, 6.5vw, 5rem);
+      line-height: 1.0;
+      letter-spacing: -0.03em;
+      color: var(--ink);
+      margin-bottom: 1.5rem;
+      max-width: 680px;
+    }
+
+    h1 em {
+      font-style: italic;
+      color: var(--ink3);
+    }
+
+    .hero-sub {
+      font-size: 1rem;
+      color: var(--ink3);
+      line-height: 1.7;
+      max-width: 420px;
+      font-weight: 300;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 0.65rem;
+      margin-top: 2.25rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.58rem 1.2rem;
+      border-radius: var(--radius-sm);
+      font-family: 'Geist', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all var(--t);
+    }
+
+    .btn-dark {
+      background: var(--accent);
+      color: var(--accent-fg);
+    }
+
+    .btn-dark:hover {
+      opacity: 0.82;
+      transform: translateY(-1px);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--ink2);
+      border-color: var(--border);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--border2);
+      color: var(--ink);
+      background: var(--bg2);
+    }
+
+    .section-label {
+      font-size: 0.73rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink3);
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .section-label::before {
+      content: '';
+      width: 18px;
+      height: 1px;
+      background: var(--ink3);
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 1px;
+    }
+
+    .grid-card {
+      background: var(--surface);
+      padding: 1.75rem;
+      transition: background var(--t);
+    }
+
+    .grid-card:hover {
+      background: var(--bg2);
+    }
+
+    .grid-icon {
+      font-size: 1.3rem;
+      margin-bottom: 0.9rem;
+      display: block;
+    }
+
+    .grid-title {
+      font-family: 'Instrument Serif', serif;
+      font-size: 1.05rem;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.45rem;
+      color: var(--ink);
+    }
+
+    .grid-desc {
+      font-size: 0.83rem;
+      color: var(--ink3);
+      line-height: 1.65;
+      font-weight: 300;
+    }
+
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-top: 2.5rem;
+    }
+
+    .stat-item {
+      background: var(--surface);
+      padding: 1.75rem;
+    }
+
+    .stat-num {
+      font-family: 'Instrument Serif', serif;
+      font-size: 2.6rem;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      color: var(--ink);
+      margin-bottom: 0.35rem;
+    }
+
+    .stat-desc {
+      font-size: 0.78rem;
+      color: var(--ink3);
+      font-weight: 400;
+    }
+
+    /* FORM PANEL */
+    .panel-wrap {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 3.5rem 2rem 5rem;
+    }
+
+    .panel-eyebrow {
+      font-size: 0.73rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink3);
+      margin-bottom: 0.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .panel-eyebrow::before {
+      content: '';
+      width: 18px;
+      height: 1px;
+      background: var(--ink3);
+    }
+
+    .panel-title {
+      font-family: 'Instrument Serif', serif;
+      font-size: 2rem;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      color: var(--ink);
+      margin-bottom: 2rem;
+    }
+
+    .form-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .form-body {
+      padding: 1.6rem;
+    }
+
+    .form-row {
+      margin-bottom: 1.1rem;
+    }
+
+    .form-row:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--ink3);
+      margin-bottom: 0.45rem;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 0.68rem 0.9rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: 'Geist', sans-serif;
+      font-size: 0.9rem;
+      color: var(--ink);
+      outline: none;
+      transition: border-color var(--t), background var(--t), box-shadow var(--t);
+    }
+
+    .form-input::placeholder {
+      color: var(--ink3);
+    }
+
+    .form-input:focus {
+      border-color: var(--ink);
+      background: var(--surface);
+      box-shadow: 0 0 0 3px rgba(26, 25, 22, 0.06);
+    }
+
+    [data-theme="dark"] .form-input:focus {
+      box-shadow: 0 0 0 3px rgba(240, 237, 232, 0.06);
+    }
+
+    .form-footer {
+      padding: 1.1rem 1.6rem;
+      border-top: 1px solid var(--border);
+      background: var(--bg2);
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 0.72rem;
+      background: var(--accent);
+      color: var(--accent-fg);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'Geist', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--t);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      opacity: 0.82;
+      transform: translateY(-1px);
+    }
+
+    .btn-submit:active {
+      transform: translateY(0);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .result-card {
+      margin-top: 1.1rem;
+      padding: 0.9rem 1.1rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid;
+      font-size: 0.875rem;
+      line-height: 1.55;
+      animation: fadeUp 0.2s ease;
+      display: none;
+    }
+
+    .result-card.success {
+      display: block;
+      background: var(--green-bg);
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    .result-card.error {
+      display: block;
+      background: var(--red-bg);
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    .result-title {
+      font-weight: 600;
+      margin-bottom: 0.15rem;
+      font-size: 0.83rem;
+    }
+
+    .result-body {
+      font-weight: 300;
+      font-size: 0.8rem;
+    }
+
+    /* DASHBOARD */
+    .dash-wrap {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 3.5rem 2rem 5rem;
+    }
+
+    .dash-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+
+    .dash-stat {
+      background: var(--surface);
+      padding: 1.2rem 1.4rem;
+      transition: background var(--t);
+    }
+
+    .dash-stat-label {
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink3);
+      margin-bottom: 0.45rem;
+    }
+
+    .dash-stat-val {
+      font-family: 'Instrument Serif', serif;
+      font-size: 1.55rem;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    .dash-stat-val.green {
+      color: var(--green);
+    }
+
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .table-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.9rem 1.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .table-title {
+      font-size: 0.83rem;
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: none;
+      border: 1px solid var(--border);
+      padding: 0.28rem 0.7rem;
+      border-radius: var(--radius-sm);
+      font-family: 'Geist', sans-serif;
+      font-size: 0.75rem;
+      color: var(--ink3);
+      cursor: pointer;
+      transition: all var(--t);
+    }
+
+    .refresh-btn:hover {
+      border-color: var(--border2);
+      color: var(--ink);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      text-align: left;
+      padding: 0.6rem 1.4rem;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink3);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+    }
+
+    td {
+      padding: 0.85rem 1.4rem;
+      font-size: 0.875rem;
+      color: var(--ink2);
+      border-bottom: 1px solid var(--border);
+      transition: background var(--t);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: var(--bg2);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.18rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    .pill::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .pill.pending {
+      background: var(--bg2);
+      color: var(--ink3);
+      border: 1px solid var(--border);
+    }
+
+    .pill.inprogress {
+      background: #fef3e8;
+      color: #b86a00;
+      border: 1px solid #f4d5a0;
+    }
+
+    .pill.completed {
+      background: var(--green-bg);
+      color: var(--green);
+      border: 1px solid #a8d8be;
+    }
+
+    [data-theme="dark"] .pill.inprogress {
+      background: #2a1e0a;
+      color: #e8a84a;
+      border-color: #4a3010;
+    }
+
+    .empty-row td {
+      text-align: center;
+      color: var(--ink3);
+      padding: 2.5rem;
+      font-size: 0.875rem;
+      font-style: italic;
+    }
+
+    /* SPINNER */
+    .spinner {
+      width: 13px;
+      height: 13px;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.55s linear infinite;
+      display: inline-block;
+    }
+
+    [data-theme="dark"] .spinner {
+      border-color: rgba(0, 0, 0, 0.2);
+      border-top-color: currentColor;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* STAGGER */
+    .stagger>* {
+      opacity: 0;
+      animation: fadeUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    .stagger>*:nth-child(1) {
+      animation-delay: 0.04s;
+    }
+
+    .stagger>*:nth-child(2) {
+      animation-delay: 0.1s;
+    }
+
+    .stagger>*:nth-child(3) {
+      animation-delay: 0.16s;
+    }
+
+    .stagger>*:nth-child(4) {
+      animation-delay: 0.22s;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 680px) {
+      nav {
+        padding: 0 1rem;
+      }
+
+      .nav-center {
+        gap: 1px;
+      }
+
+      .tab-btn {
+        padding: 0.3rem 0.65rem;
+        font-size: 0.78rem;
+      }
+
+      .home-wrap,
+      .panel-wrap,
+      .dash-wrap {
+        padding-left: 1.1rem;
+        padding-right: 1.1rem;
+      }
+
+      .grid-3,
+      .stats-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .dash-stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      th:first-child,
+      td:first-child {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <nav>
+    <div class="logo">BodaConnect</div>
+    <div class="nav-center">
+      <button class="tab-btn active" onclick="showTab('home',this)">Home</button>
+      <button class="tab-btn" onclick="showTab('ride',this)">Request Ride</button>
+      <button class="tab-btn" onclick="showTab('dashboard',this)">Dashboard</button>
+    </div>
+    <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">☀️</button>
+  </nav>
+
+  <!-- HOME -->
+  <div id="tab-home" class="panel active">
+    <div class="home-wrap">
+      <div class="hero stagger">
+        <div class="eyebrow">Dodoma, Tanzania</div>
+        <h1>The smarter way<br />to <em>move</em> the city.</h1>
+        <p class="hero-sub">BodaConnect connects passengers with trusted bodaboda riders across Dodoma — fast, reliable,
+          and built for the streets we know.</p>
+        <div class="hero-actions">
+          <button class="btn btn-dark" onclick="showTab('ride', document.querySelectorAll('.tab-btn')[1])">Request a
+            ride →</button>
+          <button class="btn btn-ghost" onclick="showTab('dashboard', document.querySelectorAll('.tab-btn')[2])">Rider
+            dashboard</button>
+        </div>
+      </div>
+
+      <div class="section-label">Platform features</div>
+      <div class="grid-3 stagger">
+        <div class="grid-card">
+          <span class="grid-icon">⚡</span>
+          <div class="grid-title">Instant matching</div>
+          <p class="grid-desc">Submit a ride request and get matched with a nearby rider in seconds. No waiting, no
+            uncertainty.</p>
+        </div>
+        <div class="grid-card">
+          <span class="grid-icon">📍</span>
+          <div class="grid-title">Live tracking</div>
+          <p class="grid-desc">Follow your rider from pickup to destination. Know exactly where you are at every step.
+          </p>
+        </div>
+        <div class="grid-card">
+          <span class="grid-icon">📊</span>
+          <div class="grid-title">Rider analytics</div>
+          <p class="grid-desc">Riders get a full dashboard — trips, earnings, and real-time status — all in one place.
+          </p>
+        </div>
+      </div>
+
+      <div class="stats-strip stagger">
+        <div class="stat-item">
+          <div class="stat-num">340+</div>
+          <div class="stat-desc">Registered riders in Dodoma</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">12k</div>
+          <div class="stat-desc">Rides completed this month</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">4.8</div>
+          <div class="stat-desc">Average passenger rating</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REQUEST RIDE -->
+  <div id="tab-ride" class="panel">
+    <div class="panel-wrap">
+      <div class="panel-eyebrow">Passenger</div>
+      <div class="panel-title">Request a ride</div>
+      <div class="form-card">
+        <div class="form-body">
+          <div class="form-row">
+            <label class="form-label">Your name</label>
+            <input class="form-input" id="customer" type="text" placeholder="e.g. Amina Hassan" autocomplete="off" />
+          </div>
+          <div class="form-row">
+            <label class="form-label">Pickup location</label>
+            <input class="form-input" id="pickup" type="text" placeholder="e.g. Nyerere Square" autocomplete="off" />
+          </div>
+          <div class="form-row">
+            <label class="form-label">Destination</label>
+            <input class="form-input" id="destination" type="text" placeholder="e.g. UDOM Campus" autocomplete="off" />
+          </div>
+        </div>
+        <div class="form-footer">
+          <button class="btn-submit" id="ride-btn" onclick="requestRide()">Request ride</button>
+        </div>
+      </div>
+      <div class="result-card" id="ride-result">
+        <div class="result-title" id="result-title"></div>
+        <div class="result-body" id="result-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="tab-dashboard" class="panel">
+    <div class="dash-wrap">
+      <div class="panel-eyebrow" style="margin-bottom:0.6rem">Rider</div>
+      <div class="panel-title" id="rider-name" style="margin-bottom:1.75rem">Dashboard</div>
+
+      <div class="dash-stats stagger">
+        <div class="dash-stat">
+          <div class="dash-stat-label">Status</div>
+          <div class="dash-stat-val green" id="stat-status">—</div>
+        </div>
+        <div class="dash-stat">
+          <div class="dash-stat-label">Trips today</div>
+          <div class="dash-stat-val" id="stat-trips">—</div>
+        </div>
+        <div class="dash-stat">
+          <div class="dash-stat-label">Pending</div>
+          <div class="dash-stat-val" id="stat-pending">—</div>
+        </div>
+        <div class="dash-stat">
+          <div class="dash-stat-label">Earnings</div>
+          <div class="dash-stat-val" id="stat-earnings">—</div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-head">
+          <span class="table-title">Assigned trips</span>
+          <button class="refresh-btn" onclick="loadDashboard()">↻ Refresh</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Customer</th>
+              <th>Pickup</th>
+              <th>Destination</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="trips-body">
+            <tr class="empty-row">
+              <td colspan="5">Loading trips...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // THEME
+    const themeBtn = document.getElementById('theme-btn');
+    function toggleTheme() {
+      const html = document.documentElement;
+      const dark = html.getAttribute('data-theme') === 'dark';
+      html.setAttribute('data-theme', dark ? 'light' : 'dark');
+      themeBtn.textContent = dark ? '☀️' : '🌙';
+      localStorage.setItem('bc-theme', dark ? 'light' : 'dark');
+    }
+    (function () {
+      const saved = localStorage.getItem('bc-theme');
+      if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        themeBtn.textContent = '🌙';
+      }
+    })();
+
+    // TABS
+    function showTab(name, el) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+      if (el) el.classList.add('active');
+      if (name === 'dashboard') loadDashboard();
+    }
+
+    // REQUEST RIDE
+    async function requestRide() {
+      const btn = document.getElementById('ride-btn');
+      const customer = document.getElementById('customer').value.trim();
+      const pickup = document.getElementById('pickup').value.trim();
+      const destination = document.getElementById('destination').value.trim();
+
+      if (!pickup || !destination) {
+        showResult('error', 'Missing fields', 'Please fill in both pickup and destination.');
+        return;
+      }
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Sending...';
+      document.getElementById('ride-result').className = 'result-card';
+
+      try {
+        const res = await fetch('/request-ride', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customer, pickup, destination })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showResult('success', 'Ride requested', `${data.pickup} → ${data.destination}. A rider will be assigned shortly.`);
+          ['customer', 'pickup', 'destination'].forEach(id => document.getElementById(id).value = '');
+        } else {
+          showResult('error', 'Error', data.error || 'Something went wrong.');
+        }
+      } catch {
+        showResult('error', 'Network error', 'Could not reach the server.');
+      }
+      btn.disabled = false;
+      btn.innerHTML = 'Request ride';
+    }
+
+    function showResult(type, title, body) {
+      const el = document.getElementById('ride-result');
+      el.className = 'result-card ' + type;
+      document.getElementById('result-title').textContent = title;
+      document.getElementById('result-body').textContent = body;
+    }
+
+    // DASHBOARD
+    async function loadDashboard() {
+      document.getElementById('trips-body').innerHTML =
+        '<tr class="empty-row"><td colspan="5">Loading...</td></tr>';
+      try {
+        const res = await fetch('/rider-dashboard');
+        const data = await res.json();
+        document.getElementById('rider-name').textContent = data.rider;
+        document.getElementById('stat-status').textContent = data.status;
+        document.getElementById('stat-trips').textContent = data.total_trips_today;
+        document.getElementById('stat-pending').textContent = data.new_requests ?? 0;
+        document.getElementById('stat-earnings').textContent = data.earnings_today;
+        const tbody = document.getElementById('trips-body');
+        if (!data.assigned_trips.length) {
+          tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No trips yet.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.assigned_trips.map(t => `
+        <tr>
+          <td>${t.id}</td>
+          <td>${t.customer || '—'}</td>
+          <td>${t.pickup}</td>
+          <td>${t.destination}</td>
+          <td><span class="pill ${t.status.toLowerCase().replace(/\s+/g, '')}">${t.status}</span></td>
+        </tr>`).join('');
+      } catch {
+        document.getElementById('trips-body').innerHTML =
+          '<tr class="empty-row"><td colspan="5">Failed to load. Is the server running?</td></tr>';
+      }
+    }
+
+    // Enter to submit
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && document.getElementById('tab-ride').classList.contains('active')) requestRide();
+    });
+  </script>
+</body>
+
+</html>
