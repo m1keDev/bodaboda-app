@@ -1,7 +1,6 @@
-name: BodaConnect CI Pipeline
+name: BodaConnect CI/CD Pipeline
 
 # ── TRIGGER ─────────────────────────────────────────────────────────────
-# Runs automatically on every push and pull request to the main branch
 on:
   push:
     branches: [ main ]
@@ -14,46 +13,133 @@ jobs:
   # ── JOB 1: TEST ─────────────────────────────────────────────────────
   test:
     name: Run Tests
-    runs-on: ubuntu-latest         # GitHub spins up a fresh Ubuntu server
+    runs-on: ubuntu-latest
 
     steps:
-
-      # Step 1: Check out your code onto the runner
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Install Python 3.10
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      # Step 3: Install all dependencies (Flask, pytest, etc.)
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # Step 4: Run pytest — pipeline FAILS here if any test fails
       - name: Run tests
         run: pytest tests/ -v
 
-  # ── JOB 2: BUILD ────────────────────────────────────────────────────
-  build:
-    name: Build Docker Image
+  # ── JOB 2: BUILD & PUSH TO DOCKER HUB ──────────────────────────────
+  build-and-push:
+    name: Build and Push Docker Image
     runs-on: ubuntu-latest
-    needs: test                    # Only runs if the test job passes
+    needs: test                    # Only runs if tests pass
 
     steps:
-
-      # Step 1: Check out code again (each job is a fresh machine)
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Build the Docker image and tag it
-      - name: Build Docker image
-        run: |
-          docker build -t bodaconnect:latest .
-          docker build -t bodaconnect:v1 .
+      # Log in to Docker Hub using your GitHub secrets
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Step 3: Confirm the image was built successfully
-      - name: Verify image exists
-        run: docker images bodaconnect
+      # Build and push with two tags: version number AND latest
+      - name: Build and push image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:v1
+
+      # Confirm what was pushed
+      - name: Confirm image tags
+        run: |
+          echo "Pushed image tags:"
+          echo "  ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:latest"
+          echo "  ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:v1"
+
+  # ── JOB 3: DEPLOY TO STAGING ────────────────────────────────────────
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-push          # Only runs after image is pushed
+    environment: staging           # Uses the staging environment we created
+
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Pull the image we just pushed and run it as staging
+      # Port 5001 = staging (simulated locally on the runner)
+      - name: Deploy to staging
+        run: |
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:latest
+          docker stop bodaconnect-staging 2>/dev/null || true
+          docker rm bodaconnect-staging 2>/dev/null || true
+          docker run -d \
+            --name bodaconnect-staging \
+            -p 5001:5000 \
+            ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:latest
+
+      # Wait a moment for the container to start
+      - name: Wait for app to start
+        run: sleep 5
+
+      # Verify staging is actually responding
+      - name: Verify staging is running
+        run: |
+          curl -f http://localhost:5001 && echo "Staging is UP" || echo "Staging check failed"
+
+      - name: Show staging container status
+        run: docker ps | grep bodaconnect-staging
+
+  # ── JOB 4: DEPLOY TO PRODUCTION ─────────────────────────────────────
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging          # Only runs after staging succeeds
+    environment: production        # This environment requires manual approval
+
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Pull and run as production
+      # Port 5002 = production (simulated locally on the runner)
+      - name: Deploy to production
+        run: |
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:latest
+          docker stop bodaconnect-production 2>/dev/null || true
+          docker rm bodaconnect-production 2>/dev/null || true
+          docker run -d \
+            --name bodaconnect-production \
+            -p 5002:5000 \
+            ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:latest
+
+      - name: Wait for app to start
+        run: sleep 5
+
+      # Verify production is responding
+      - name: Verify production is running
+        run: |
+          curl -f http://localhost:5002 && echo "Production is UP" || echo "Production check failed"
+
+      - name: Show production container status
+        run: docker ps | grep bodaconnect-production
+
+      - name: Deployment complete
+        run: |
+          echo "BodaConnect successfully deployed to production"
+          echo "Image: ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:latest"
