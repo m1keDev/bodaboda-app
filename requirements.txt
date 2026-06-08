@@ -1,3 +1,4 @@
 flask
 prometheus-flask-exporter
 pytest
+paho-mqtt

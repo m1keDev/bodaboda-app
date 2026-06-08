@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
 
-  # ── 1. Your Flask web app ──────────────────────────────
+  # ── 1. Flask web app ───────────────────────────────────
   bodaconnect-app:
     build: .
     container_name: bodaconnect-app
@@ -11,8 +11,34 @@ services:
     networks:
       - monitoring
     restart: unless-stopped
+    depends_on:
+      - mosquitto
 
-  # ── 2. Node Exporter (CPU, RAM, disk, network) ─────────
+  # ── 2. MQTT Broker ─────────────────────────────────────
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # ── 3. Driver Simulator ────────────────────────────────
+  driver-simulator:
+    build: ./simulator
+    container_name: driver-simulator
+    networks:
+      - monitoring
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    # No ports needed — this container only talks MQTT internally
+
+  # ── 4. Node Exporter ───────────────────────────────────
   node-exporter:
     image: prom/node-exporter:latest
     container_name: node-exporter
@@ -30,7 +56,7 @@ services:
       - monitoring
     restart: unless-stopped
 
-  # ── 3. Prometheus (scrapes and stores all metrics) ─────
+  # ── 5. Prometheus ──────────────────────────────────────
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -50,7 +76,7 @@ services:
       - bodaconnect-app
       - node-exporter
 
-  # ── 4. Grafana (dashboards and visualization) ──────────
+  # ── 6. Grafana ─────────────────────────────────────────
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
