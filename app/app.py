@@ -5,6 +5,7 @@ import paho.mqtt.client as mqtt
 import json
 import threading
 import datetime
+import os
 
 app = Flask(__name__)
 metrics = PrometheusMetrics(app)
@@ -34,14 +35,16 @@ latest_status = {}
 # MQTT SETUP
 # ══════════════════════════════════════════════════════════════════════
 
-MQTT_BROKER = "mosquitto"
+# Read broker address from environment variable
+# Defaults to "mosquitto" for Docker Compose
+# Set to "localhost" in CI or local testing outside Docker
+MQTT_BROKER = os.environ.get("MQTT_BROKER", "mosquitto")
 MQTT_PORT   = 1883
 
 mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="bodaconnect-backend")
 
 
 def on_connect(client, userdata, flags, reason_code, properties):
-    """Called when the backend connects to the broker."""
     if reason_code == 0:
         print("[MQTT] Backend connected to Mosquitto broker")
         client.subscribe("ride/status")
@@ -51,7 +54,6 @@ def on_connect(client, userdata, flags, reason_code, properties):
 
 
 def on_message(client, userdata, msg):
-    """Called when a message arrives on a subscribed topic."""
     global latest_status
     try:
         payload = json.loads(msg.payload.decode())
@@ -80,16 +82,18 @@ mqtt_client.on_disconnect = on_disconnect
 
 
 def start_mqtt():
-    """Connect to broker and start the background network loop."""
     try:
         mqtt_client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
         mqtt_client.loop_start()
-        print("[MQTT] Background loop started")
+        print(f"[MQTT] Background loop started — broker: {MQTT_BROKER}:{MQTT_PORT}")
     except Exception as e:
         print(f"[MQTT] Could not connect to broker: {e}")
 
 
-threading.Thread(target=start_mqtt, daemon=True).start()
+# Only start the MQTT background thread when running for real
+# Skip it during pytest so imports don't trigger connection attempts
+if not os.environ.get("TESTING"):
+    threading.Thread(target=start_mqtt, daemon=True).start()
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -126,19 +130,23 @@ def request_ride():
     ride_requests_total.inc()
     active_trips_gauge.set(len(rider_trips))
 
-    mqtt_payload = json.dumps({
-        "ride_id":     trip["id"],
-        "customer":    trip["customer"],
-        "pickup":      trip["pickup"],
-        "destination": trip["destination"],
-        "status":      trip["status"],
-        "timestamp":   trip["timestamp"]
-    })
-    result = mqtt_client.publish("ride/request", mqtt_payload)
-    if result.rc == mqtt.MQTT_ERR_SUCCESS:
-        print(f"[MQTT] Published ride request #{trip['id']} to ride/request")
+    # Only publish if MQTT is connected
+    if mqtt_client.is_connected():
+        mqtt_payload = json.dumps({
+            "ride_id":     trip["id"],
+            "customer":    trip["customer"],
+            "pickup":      trip["pickup"],
+            "destination": trip["destination"],
+            "status":      trip["status"],
+            "timestamp":   trip["timestamp"]
+        })
+        result = mqtt_client.publish("ride/request", mqtt_payload)
+        if result.rc == mqtt.MQTT_ERR_SUCCESS:
+            print(f"[MQTT] Published ride request #{trip['id']} to ride/request")
+        else:
+            print(f"[MQTT] Failed to publish (rc={result.rc})")
     else:
-        print(f"[MQTT] Failed to publish ride request (rc={result.rc})")
+        print("[MQTT] Skipping publish — not connected to broker")
 
     return jsonify(trip), 201
 
@@ -162,7 +170,6 @@ def get_trips():
 
 @app.route("/ride-status")
 def ride_status():
-    """Frontend polls this to get the latest status update from the driver."""
     return jsonify(latest_status)
 
 

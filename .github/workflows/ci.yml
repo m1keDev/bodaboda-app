@@ -1,13 +1,11 @@
 name: BodaConnect CI/CD Pipeline
 
-# ── TRIGGER ─────────────────────────────────────────────────────────────
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
 
-# ── JOBS ────────────────────────────────────────────────────────────────
 jobs:
 
   # ── JOB 1: TEST ─────────────────────────────────────────────────────
@@ -15,19 +13,11 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
 
-    # Service containers run alongside the test job
-    # Mosquitto starts before tests run — available at localhost:1883
     services:
       mosquitto:
         image: eclipse-mosquitto:2.0
         ports:
           - 1883:1883
-          - 9001:9001
-        options: >-
-          --health-cmd "mosquitto_sub -h localhost -t test -C 1 -E -i probe --quiet"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -41,23 +31,24 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # Write a minimal mosquitto config that allows anonymous connections
-      # The service container uses default config which blocks connections
-      - name: Configure Mosquitto for testing
+      # Allow anonymous connections on the CI Mosquitto instance
+      - name: Configure Mosquitto for CI
         run: |
           docker exec $(docker ps -q --filter ancestor=eclipse-mosquitto:2.0) \
-            sh -c "echo 'listener 1883\nallow_anonymous true' > /mosquitto/config/mosquitto.conf"
+            sh -c "printf 'listener 1883\nallow_anonymous true\n' > /mosquitto/config/mosquitto.conf"
           docker exec $(docker ps -q --filter ancestor=eclipse-mosquitto:2.0) \
-            mosquitto_reload || true
+            kill -HUP 1 || true
           sleep 2
 
-      # Run all tests including the MQTT broker connection test
+      # TESTING=true prevents app.py from starting its MQTT background thread
+      # MQTT_BROKER=localhost points the MQTT test at the CI service container
       - name: Run tests
         run: pytest tests/ -v
         env:
+          TESTING: "true"
           MQTT_BROKER: localhost
 
-  # ── JOB 2: BUILD & PUSH TO DOCKER HUB ──────────────────────────────
+  # ── JOB 2: BUILD & PUSH ──────────────────────────────────────────────
   build-and-push:
     name: Build and Push Docker Images
     runs-on: ubuntu-latest
@@ -73,7 +64,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Build and push the Flask app image
       - name: Build and push app image
         uses: docker/build-push-action@v4
         with:
@@ -83,7 +73,6 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:v1
 
-      # Build and push the driver simulator image
       - name: Build and push simulator image
         uses: docker/build-push-action@v4
         with:
@@ -95,13 +84,13 @@ jobs:
 
       - name: Confirm pushed images
         run: |
-          echo "Images pushed to Docker Hub:"
+          echo "Images pushed:"
           echo "  ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:latest"
           echo "  ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:v1"
           echo "  ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect-simulator:latest"
           echo "  ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect-simulator:v1"
 
-  # ── JOB 3: DEPLOY TO STAGING ────────────────────────────────────────
+  # ── JOB 3: DEPLOY TO STAGING ─────────────────────────────────────────
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
@@ -115,21 +104,17 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Start Mosquitto broker for staging environment
-      - name: Start MQTT broker (staging)
+      - name: Start MQTT broker for staging
         run: |
           docker network create staging-net || true
           docker run -d \
             --name mosquitto-staging \
             --network staging-net \
             -p 1883:1883 \
-            -e "MOSQUITTO_CONFIG=listener 1883\nallow_anonymous true" \
             eclipse-mosquitto:2.0 \
-            sh -c "echo 'listener 1883\nallow_anonymous true' > /mosquitto/config/mosquitto.conf && /docker-entrypoint.sh /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf"
+            sh -c "printf 'listener 1883\nallow_anonymous true\n' > /mosquitto/config/mosquitto.conf && /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf"
           sleep 3
-          echo "MQTT broker started for staging"
 
-      # Deploy Flask app
       - name: Deploy app to staging
         run: |
           docker pull ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:latest
@@ -142,7 +127,6 @@ jobs:
             -e MQTT_BROKER=mosquitto-staging \
             ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:latest
 
-      # Deploy driver simulator
       - name: Deploy simulator to staging
         run: |
           docker pull ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect-simulator:latest
@@ -157,14 +141,13 @@ jobs:
       - name: Wait for staging to start
         run: sleep 5
 
-      - name: Verify staging app is running
-        run: |
-          curl -f http://localhost:5001 && echo "Staging app is UP"
+      - name: Verify staging is running
+        run: curl -f http://localhost:5001 && echo "Staging is UP"
 
       - name: Show staging containers
         run: docker ps | grep staging
 
-  # ── JOB 4: DEPLOY TO PRODUCTION ─────────────────────────────────────
+  # ── JOB 4: DEPLOY TO PRODUCTION ──────────────────────────────────────
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
@@ -178,8 +161,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Start Mosquitto for production
-      - name: Start MQTT broker (production)
+      - name: Start MQTT broker for production
         run: |
           docker network create prod-net || true
           docker run -d \
@@ -187,10 +169,9 @@ jobs:
             --network prod-net \
             -p 1884:1883 \
             eclipse-mosquitto:2.0 \
-            sh -c "echo 'listener 1883\nallow_anonymous true' > /mosquitto/config/mosquitto.conf && /docker-entrypoint.sh /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf"
+            sh -c "printf 'listener 1883\nallow_anonymous true\n' > /mosquitto/config/mosquitto.conf && /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf"
           sleep 3
 
-      # Deploy Flask app to production
       - name: Deploy app to production
         run: |
           docker pull ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:latest
@@ -203,7 +184,6 @@ jobs:
             -e MQTT_BROKER=mosquitto-prod \
             ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:latest
 
-      # Deploy driver simulator to production
       - name: Deploy simulator to production
         run: |
           docker pull ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect-simulator:latest
@@ -219,14 +199,13 @@ jobs:
         run: sleep 5
 
       - name: Verify production is running
-        run: |
-          curl -f http://localhost:5002 && echo "Production is UP"
+        run: curl -f http://localhost:5002 && echo "Production is UP"
 
       - name: Show production containers
         run: docker ps | grep prod
 
       - name: Deployment complete
         run: |
-          echo "BodaConnect + MQTT successfully deployed to production"
+          echo "BodaConnect + MQTT deployed to production"
           echo "App:       ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect:latest"
           echo "Simulator: ${{ secrets.DOCKERHUB_USERNAME }}/bodaconnect-simulator:latest"
