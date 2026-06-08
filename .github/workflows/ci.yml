@@ -13,12 +13,6 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
 
-    services:
-      mosquitto:
-        image: eclipse-mosquitto:2.0
-        ports:
-          - 1883:1883
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -31,17 +25,27 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # Allow anonymous connections on the CI Mosquitto instance
-      - name: Configure Mosquitto for CI
+      # Start Mosquitto manually with our config file mounted
+      # This guarantees anonymous access is allowed before tests run
+      - name: Start Mosquitto broker
         run: |
-          docker exec $(docker ps -q --filter ancestor=eclipse-mosquitto:2.0) \
-            sh -c "printf 'listener 1883\nallow_anonymous true\n' > /mosquitto/config/mosquitto.conf"
-          docker exec $(docker ps -q --filter ancestor=eclipse-mosquitto:2.0) \
-            kill -HUP 1 || true
-          sleep 2
+          docker run -d \
+            --name mosquitto-ci \
+            -p 1883:1883 \
+            -v ${{ github.workspace }}/mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf \
+            eclipse-mosquitto:2.0
+          echo "Waiting for Mosquitto to be ready..."
+          sleep 5
+          docker logs mosquitto-ci
 
-      # TESTING=true prevents app.py from starting its MQTT background thread
-      # MQTT_BROKER=localhost points the MQTT test at the CI service container
+      # Verify broker is actually accepting connections before running tests
+      - name: Verify broker is reachable
+        run: |
+          docker exec mosquitto-ci mosquitto_pub \
+            -h localhost -p 1883 -t "test/ping" -m "ping" && \
+          echo "Broker is accepting connections" || \
+          echo "Broker not ready yet"
+
       - name: Run tests
         run: pytest tests/ -v
         env:
