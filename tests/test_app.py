@@ -18,7 +18,7 @@ def client():
 def test_homepage(client):
     """GET / should return 200 OK."""
     response = client.get('/')
-    assert response.status_code == 200
+    assert response.status_code == 299
 
 
 # ── Test 2: Ride request with valid data ───────────────────────────────
