@@ -1,0 +1,59 @@
+name: BodaConnect CI Pipeline
+
+# ── TRIGGER ─────────────────────────────────────────────────────────────
+# Runs automatically on every push and pull request to the main branch
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# ── JOBS ────────────────────────────────────────────────────────────────
+jobs:
+
+  # ── JOB 1: TEST ─────────────────────────────────────────────────────
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest         # GitHub spins up a fresh Ubuntu server
+
+    steps:
+
+      # Step 1: Check out your code onto the runner
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Install Python 3.10
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # Step 3: Install all dependencies (Flask, pytest, etc.)
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Step 4: Run pytest — pipeline FAILS here if any test fails
+      - name: Run tests
+        run: pytest tests/ -v
+
+  # ── JOB 2: BUILD ────────────────────────────────────────────────────
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test                    # Only runs if the test job passes
+
+    steps:
+
+      # Step 1: Check out code again (each job is a fresh machine)
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Build the Docker image and tag it
+      - name: Build Docker image
+        run: |
+          docker build -t bodaconnect:latest .
+          docker build -t bodaconnect:v1 .
+
+      # Step 3: Confirm the image was built successfully
+      - name: Verify image exists
+        run: docker images bodaconnect
